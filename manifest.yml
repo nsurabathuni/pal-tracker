@@ -3,6 +3,6 @@ applications:
 - name: pal-tracker
   path: build/libs/pal-tracker.jar
   routes:
-  - route: pal-tracker-358d63b2-0b5e-11e9-ab14-d663bd873d93.cfapps.io
+  - route: pal-tracker-nsurabathuni-review.cfapps.io
   env:
     WELCOME_MESSAGE: Hello from the review environment
