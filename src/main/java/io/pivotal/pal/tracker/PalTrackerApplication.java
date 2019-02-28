@@ -9,7 +9,6 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
-import test.pivotal.pal.tracker.InMemoryTimeEntryRepository;
 
 @SpringBootApplication
 public class PalTrackerApplication {
@@ -22,6 +21,7 @@ public class PalTrackerApplication {
     public TimeEntryRepository timeEntryRepository() {
         MysqlDataSource dataSource = new MysqlDataSource();
         dataSource.setUrl(System.getenv("SPRING_DATASOURCE_URL"));
+        System.out.println("Jdbc URL is " + dataSource.getURL());
         return new JdbcTimeEntryRepository(dataSource);
     }
 
