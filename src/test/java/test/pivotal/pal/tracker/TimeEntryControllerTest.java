@@ -1,5 +1,8 @@
 package test.pivotal.pal.tracker;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.pivotal.pal.tracker.TimeEntry;
 import io.pivotal.pal.tracker.TimeEntryController;
 import io.pivotal.pal.tracker.TimeEntryRepository;
@@ -20,11 +23,21 @@ import static org.mockito.Mockito.*;
 public class TimeEntryControllerTest {
     private TimeEntryRepository timeEntryRepository;
     private TimeEntryController controller;
+    private MeterRegistry meterRegistry;
+    private DistributionSummary timeEntrySummary;
+    private Counter actionCounter;
 
     @Before
     public void setUp() throws Exception {
         timeEntryRepository = mock(TimeEntryRepository.class);
-        controller = new TimeEntryController(timeEntryRepository);
+        meterRegistry = mock(MeterRegistry.class);
+        timeEntrySummary = mock(DistributionSummary.class);
+        actionCounter = mock(Counter.class);
+
+        doReturn(actionCounter).when(meterRegistry).counter(anyString());
+        doReturn(timeEntrySummary).when(meterRegistry).summary(anyString());
+
+        controller = new TimeEntryController(timeEntryRepository, meterRegistry);
     }
 
     @Test
@@ -36,8 +49,9 @@ public class TimeEntryControllerTest {
         long timeEntryId = 1L;
         TimeEntry expectedResult = new TimeEntry(timeEntryId, projectId, userId, LocalDate.parse("2017-01-08"), 8);
         doReturn(expectedResult)
-            .when(timeEntryRepository)
-            .create(any(TimeEntry.class));
+                .when(timeEntryRepository)
+                .create(any(TimeEntry.class));
+        doNothing().when(timeEntrySummary).record(anyInt());
 
 
         ResponseEntity response = controller.create(timeEntryToCreate);
@@ -55,8 +69,8 @@ public class TimeEntryControllerTest {
         long userId = 456L;
         TimeEntry expected = new TimeEntry(timeEntryId, projectId, userId, LocalDate.parse("2017-01-08"), 8);
         doReturn(expected)
-            .when(timeEntryRepository)
-            .find(timeEntryId);
+                .when(timeEntryRepository)
+                .find(timeEntryId);
 
         ResponseEntity<TimeEntry> response = controller.read(timeEntryId);
 
@@ -69,8 +83,8 @@ public class TimeEntryControllerTest {
     public void testRead_NotFound() throws Exception {
         long nonExistentTimeEntryId = 1L;
         doReturn(null)
-            .when(timeEntryRepository)
-            .find(nonExistentTimeEntryId);
+                .when(timeEntryRepository)
+                .find(nonExistentTimeEntryId);
 
         ResponseEntity<TimeEntry> response = controller.read(nonExistentTimeEntryId);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
@@ -79,14 +93,15 @@ public class TimeEntryControllerTest {
     @Test
     public void testList() throws Exception {
         List<TimeEntry> expected = asList(
-            new TimeEntry(1L, 123L, 456L, LocalDate.parse("2017-01-08"), 8),
-            new TimeEntry(2L, 789L, 321L, LocalDate.parse("2017-01-07"), 4)
+                new TimeEntry(1L, 123L, 456L, LocalDate.parse("2017-01-08"), 8),
+                new TimeEntry(2L, 789L, 321L, LocalDate.parse("2017-01-07"), 4)
         );
         doReturn(expected).when(timeEntryRepository).list();
 
         ResponseEntity<List<TimeEntry>> response = controller.list();
 
         verify(timeEntryRepository).list();
+        verify(actionCounter).increment();
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(expected);
     }
@@ -98,8 +113,8 @@ public class TimeEntryControllerTest {
         long userId = 654L;
         TimeEntry expected = new TimeEntry(timeEntryId, projectId, userId, LocalDate.parse("2017-01-07"), 4);
         doReturn(expected)
-            .when(timeEntryRepository)
-            .update(eq(timeEntryId), any(TimeEntry.class));
+                .when(timeEntryRepository)
+                .update(eq(timeEntryId), any(TimeEntry.class));
 
         ResponseEntity response = controller.update(timeEntryId, expected);
 
@@ -112,8 +127,8 @@ public class TimeEntryControllerTest {
     public void testUpdate_NotFound() throws Exception {
         long nonExistentTimeEntryId = 1L;
         doReturn(null)
-            .when(timeEntryRepository)
-            .update(eq(nonExistentTimeEntryId), any(TimeEntry.class));
+                .when(timeEntryRepository)
+                .update(eq(nonExistentTimeEntryId), any(TimeEntry.class));
 
         ResponseEntity response = controller.update(nonExistentTimeEntryId, new TimeEntry());
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
